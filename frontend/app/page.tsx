@@ -12,10 +12,10 @@ const FUNCTION_TYPES = ["Social", "Corporate"];
 const PAYMENT_MODES = ["Cash", "Card", "UPI"];
 const OTHER_CHARGES = ["Alcohol", "DJ", "AV", "Other Charges"];
 
+const TOKEN_KEY = "pablo_staff_token";
+
 const EMPTY = {
   reservation_no: "",
-  submitted_by: "",
-  submit_password: "",
   date: "",
   time: "",
   function_type: "",
@@ -59,11 +59,122 @@ function stamp(d: Date) {
   );
 }
 
-export default function ProspectusForm() {
+interface Session {
+  token: string;
+  displayName: string;
+}
+
+/** The form is gated: staff sign in first, then it opens. */
+export default function ProspectusPage() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setReady(true);
+      return;
+    }
+    // Confirm the stored token has not expired before opening the form.
+    apiGet("/api/staff/me", token)
+      .then((me) => setSession({ token, displayName: me.displayName }))
+      .catch(() => localStorage.removeItem(TOKEN_KEY))
+      .finally(() => setReady(true));
+  }, []);
+
+  const signOut = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    setSession(null);
+  }, []);
+
+  function onSignedIn(next: Session) {
+    localStorage.setItem(TOKEN_KEY, next.token);
+    setSession(next);
+  }
+
+  if (!ready) return null;
+  if (!session) return <StaffLogin onSignedIn={onSignedIn} />;
+
+  return <ProspectusForm session={session} onSignOut={signOut} />;
+}
+
+function StaffLogin({ onSignedIn }: { onSignedIn: (s: Session) => void }) {
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    apiGet("/api/staff")
+      .then((d) => setStaff(d.staff ?? []))
+      .catch(() => setStaff([]));
+  }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await apiSend("/api/staff/login", "POST", { username, password });
+      onSignedIn({ token: res.token, displayName: res.displayName });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="staff-login" onSubmit={submit}>
+      <div className="brand">PABLO</div>
+      <h1>FUNCTION PROSPECTUS</h1>
+      <p className="sub">Sign in to open the form.</p>
+
+      {error && <div className="notice notice-error">{error}</div>}
+
+      <label>
+        <span>Submitted By</span>
+        {staff.length ? (
+          <select value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus>
+            <option value="">Select</option>
+            {staff.map((s) => (
+              <option key={s.username} value={s.username}>
+                {s.displayName}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+        )}
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+      </label>
+
+      <button type="submit" className="submit-btn" style={{ width: "100%" }} disabled={busy}>
+        {busy ? "SIGNING IN…" : "SIGN IN"}
+      </button>
+
+      <p className="form-footer-link" style={{ marginTop: 18 }}>
+        <a href="/admin">Admin panel</a>
+      </p>
+    </form>
+  );
+}
+
+function ProspectusForm({ session, onSignOut }: { session: Session; onSignOut: () => void }) {
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [payment, setPayment] = useState<string[]>([]);
   const [otherCharges, setOtherCharges] = useState<string[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
   const [fpDisplay, setFpDisplay] = useState("PABLO FP / AUTO");
   const [timestamp, setTimestamp] = useState(() => stamp(new Date()));
   const [submitting, setSubmitting] = useState(false);
@@ -81,9 +192,6 @@ export default function ProspectusForm() {
 
   useEffect(() => {
     refreshFp();
-    apiGet("/api/staff")
-      .then((d) => setStaff(d.staff ?? []))
-      .catch(() => setStaff([]));
   }, [refreshFp]);
 
   // Live clock, mirroring the original page's ticking timestamp.
@@ -106,12 +214,17 @@ export default function ProspectusForm() {
     setSubmitting(true);
 
     try {
-      const result = await apiSend("/api/prospectus", "POST", {
-        ...fields,
-        payment,
-        other_charges: otherCharges,
-        generated_at: timestamp,
-      });
+      const result = await apiSend(
+        "/api/prospectus",
+        "POST",
+        {
+          ...fields,
+          payment,
+          other_charges: otherCharges,
+          generated_at: timestamp,
+        },
+        session.token
+      );
 
       saveBase64Pdf(result.pdfBase64, result.filename);
       setSuccess({ fp: result.fp_no, mailed: result.mailed, mailError: result.mailError });
@@ -122,7 +235,10 @@ export default function ProspectusForm() {
       refreshFp();
       topRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not reach the server. Please try again.");
+      const message = err instanceof ApiError ? err.message : "Could not reach the server. Please try again.";
+      setError(message);
+      // An expired session sends the user back to the sign-in screen.
+      if (/sign in|expired/i.test(message)) onSignOut();
       topRef.current?.scrollIntoView({ behavior: "smooth" });
     } finally {
       setSubmitting(false);
@@ -132,6 +248,15 @@ export default function ProspectusForm() {
   return (
     <>
       <div ref={topRef} />
+
+      <div className="signed-in-as">
+        <span>
+          Signed in as <strong>{session.displayName}</strong>
+        </span>
+        <button type="button" className="link-btn" onClick={onSignOut}>
+          Sign out
+        </button>
+      </div>
 
       {error && <div className="notice notice-error">{error}</div>}
 
@@ -154,31 +279,7 @@ export default function ProspectusForm() {
                   <input type="text" value={fields.reservation_no} onChange={set("reservation_no")} />
 
                   <div style={{ marginTop: 8 }}>
-                    <strong>
-                      Submitted By <span className="req">*</span> :
-                    </strong>
-                    <select className="boxed" required value={fields.submitted_by} onChange={set("submitted_by")}>
-                      <option value="">Select</option>
-                      {staff.map((s) => (
-                        <option key={s.username} value={s.username}>
-                          {s.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ marginTop: 8 }}>
-                    <strong>
-                      Password <span className="req">*</span> :
-                    </strong>
-                    <input
-                      className="boxed"
-                      type="password"
-                      required
-                      autoComplete="new-password"
-                      value={fields.submit_password}
-                      onChange={set("submit_password")}
-                    />
+                    <strong>Submitted By :</strong> {session.displayName}
                   </div>
                 </td>
                 <td style={{ width: "34%" }} className="center">

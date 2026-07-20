@@ -20,13 +20,46 @@ export function signAdmin(username: string) {
   });
 }
 
+export interface StaffToken {
+  sub: string;
+  name: string;
+  role: "staff";
+}
+
+export function signStaff(username: string, displayName: string) {
+  return jwt.sign({ sub: username, name: displayName, role: "staff" } as StaffToken, SECRET, {
+    expiresIn: "12h",
+  });
+}
+
 export interface AuthedRequest extends Request {
   admin?: AdminToken;
+  staff?: StaffToken;
+}
+
+function bearer(req: Request) {
+  const header = req.headers.authorization || "";
+  return header.startsWith("Bearer ") ? header.slice(7) : null;
+}
+
+/** Gates the prospectus form: staff must sign in before it opens. */
+export function requireStaff(req: AuthedRequest, res: Response, next: NextFunction) {
+  const token = bearer(req);
+  if (!token) {
+    return res.status(401).json({ error: "Please sign in to open the form." });
+  }
+  try {
+    const payload = jwt.verify(token, SECRET) as StaffToken;
+    if (payload.role !== "staff") throw new Error("wrong role");
+    req.staff = payload;
+    next();
+  } catch {
+    res.status(401).json({ error: "Your session has expired. Please sign in again." });
+  }
 }
 
 export function requireAdmin(req: AuthedRequest, res: Response, next: NextFunction) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  const token = bearer(req);
   if (!token) {
     return res.status(401).json({ error: "Not signed in." });
   }

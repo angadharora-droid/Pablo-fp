@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyStaff } from "../auth";
+import { verifyStaff, signStaff, requireStaff, AuthedRequest } from "../auth";
 import { prospectusCol, nextSerial, formatFpNo, peekNextFpNo } from "../db";
 import { renderProspectusPdf, pdfFilename } from "../pdf";
 import { sendProspectusMail } from "../mailer";
@@ -53,14 +53,36 @@ publicRouter.get("/staff", async (_req, res, next) => {
   }
 });
 
-publicRouter.post("/prospectus", async (req, res, next) => {
+/** Signs a staff member in so the form can open. */
+publicRouter.post("/staff/login", async (req, res, next) => {
   try {
-    const body = req.body ?? {};
-
-    const staff = await verifyStaff(body.submitted_by, body.submit_password);
+    const { username, password } = req.body ?? {};
+    const staff = await verifyStaff(String(username || ""), String(password || ""));
     if (!staff) {
       return res.status(401).json({ error: "Invalid user or password." });
     }
+    res.json({
+      token: signStaff(staff.username, staff.displayName),
+      username: staff.username,
+      displayName: staff.displayName,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Confirms a stored token is still valid when the page reloads. */
+publicRouter.get("/staff/me", requireStaff, (req: AuthedRequest, res) => {
+  res.json({ username: req.staff!.sub, displayName: req.staff!.name });
+});
+
+publicRouter.post("/prospectus", requireStaff, async (req: AuthedRequest, res, next) => {
+  try {
+    const body = req.body ?? {};
+
+    // The submitter comes from the signed-in session, not the payload, so it
+    // cannot be spoofed by editing the request.
+    const staff = { username: req.staff!.sub, displayName: req.staff!.name };
 
     const required: Record<string, string> = {
       date: str(body.date),
