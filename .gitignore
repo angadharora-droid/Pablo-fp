@@ -9,6 +9,7 @@ out/
 .env*.local
 
 .mongodb-data/
+*.tsbuildinfo
 *.log
 .DS_Store
 next-env.d.ts
