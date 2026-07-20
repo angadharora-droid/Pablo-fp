@@ -180,7 +180,13 @@ export function renderProspectusPdf(record: Prospectus): Promise<Buffer> {
             { label: "Submitted By", value: text(record.submitted_by) },
           ],
         },
-        { width: 0.34, noBorder: true, align: "center", blocks: [{ value: "PABLO" }] },
+        {
+          width: 0.34,
+          noBorder: true,
+          align: "center",
+          // Records predating multi-venue support have no venue name.
+          blocks: [{ value: (record.venue_name || "PABLO").toUpperCase() }],
+        },
         { width: 0.33, noBorder: true, align: "right", blocks: [{ label: "PABLO FP / SR", value: record.fp_no }] },
       ],
       y,

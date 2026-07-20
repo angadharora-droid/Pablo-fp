@@ -186,6 +186,224 @@ body {
   color: #7a5200;
 }
 
+/* ---------------------------------------------------------------------------
+   App shell — top nav and the content area beneath it.
+--------------------------------------------------------------------------- */
+
+.app-nav {
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  margin: -24px -12px 24px;
+}
+
+.app-nav-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.app-brand {
+  font-size: 22px;
+  font-weight: 800;
+  color: #2952e3;
+  text-decoration: none;
+  letter-spacing: 0.3px;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.app-tab {
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  text-decoration: none;
+}
+
+.app-tab:hover {
+  background: #f2f4fb;
+}
+
+.app-tab-active {
+  background: #2952e3;
+  color: #fff;
+}
+
+.app-tab-active:hover {
+  background: #2952e3;
+}
+
+.app-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 14px;
+  color: #555;
+}
+
+.app-venue {
+  color: #2952e3;
+  font-weight: 600;
+}
+
+.app-user {
+  font-weight: 600;
+  color: #000;
+}
+
+.app-logout {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+}
+
+.app-logout:hover {
+  color: #000;
+  text-decoration: underline;
+}
+
+.app-content {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+/* Bookings tab */
+
+.bookings-card {
+  max-width: 1120px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.bookings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.bookings-head h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.bookings-head input[type="text"] {
+  border: 1px solid #999;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 260px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+}
+
+table.data th,
+table.data td {
+  border: 1px solid #eee;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+table.data th {
+  background: #fafafa;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #666;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.pill-sent {
+  background: #eaf7ee;
+  color: #125a29;
+  border: 1px solid #1b7f3b;
+}
+
+.pill-failed {
+  background: #fdecef;
+  color: #7a0016;
+  border: 1px solid #b00020;
+}
+
+.pill-pending {
+  background: #fff8e5;
+  color: #7a5200;
+  border: 1px solid #9a6700;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: bold;
+}
+
+.btn:hover:not(:disabled) {
+  background: #000;
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.pager {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.muted {
+  color: #666;
+  font-size: 13px;
+  white-space: normal;
+}
+
 /* Sign-in gate shown before the form opens. */
 .staff-login {
   max-width: 380px;

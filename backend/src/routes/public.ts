@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { verifyStaff, signStaff, requireStaff, AuthedRequest } from "../auth";
-import { prospectusCol, nextSerial, formatFpNo, peekNextFpNo } from "../db";
+import { prospectusCol, venueCol, nextSerial, formatFpNo, peekNextFpNo } from "../db";
+import { ObjectId } from "mongodb";
 import { renderProspectusPdf, pdfFilename } from "../pdf";
 import { sendProspectusMail } from "../mailer";
 import type { Prospectus } from "../types";
@@ -76,6 +77,69 @@ publicRouter.get("/staff/me", requireStaff, (req: AuthedRequest, res) => {
   res.json({ username: req.staff!.sub, displayName: req.staff!.name });
 });
 
+/** Outlets the signed-in user can raise bookings against. */
+publicRouter.get("/venues", requireStaff, async (_req, res, next) => {
+  try {
+    const venues = await venueCol()
+      .find({ active: true }, { projection: { code: 1, name: 1, _id: 0 } })
+      .sort({ name: 1 })
+      .toArray();
+    res.json({ venues });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Bookings list for the nav's Bookings tab, scoped to one venue. */
+publicRouter.get("/bookings", requireStaff, async (req, res, next) => {
+  try {
+    const venueCode = String(req.query.venue || "").trim().toLowerCase();
+    if (!venueCode) return res.status(400).json({ error: "Select a venue first." });
+
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+    const search = String(req.query.search || "").trim();
+
+    const filter: Record<string, unknown> = { venue_code: venueCode };
+    if (search) {
+      const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      filter.$or = [{ fp_no: rx }, { party_name: rx }, { company_name: rx }, { mobile: rx }, { reservation_no: rx }];
+    }
+
+    const [items, total] = await Promise.all([
+      prospectusCol()
+        .find(filter, { projection: { menu: 0 } })
+        .sort({ serialNo: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .toArray(),
+      prospectusCol().countDocuments(filter),
+    ]);
+
+    res.json({ items, total, page, pages: Math.ceil(total / limit) || 1 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Re-download from the Bookings tab. Scoped to the record's own venue. */
+publicRouter.get("/bookings/:id/pdf", requireStaff, async (req, res, next) => {
+  try {
+    const id = ObjectId.isValid(req.params.id) ? new ObjectId(req.params.id) : null;
+    if (!id) return res.status(400).json({ error: "Invalid id." });
+
+    const doc = await prospectusCol().findOne({ _id: id });
+    if (!doc) return res.status(404).json({ error: "Not found." });
+
+    const pdf = await renderProspectusPdf(doc);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${pdfFilename(doc)}"`);
+    res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
+});
+
 publicRouter.post("/prospectus", requireStaff, async (req: AuthedRequest, res, next) => {
   try {
     const body = req.body ?? {};
@@ -104,6 +168,14 @@ publicRouter.post("/prospectus", requireStaff, async (req: AuthedRequest, res, n
       return res.status(400).json({ error: "Invalid time slot." });
     }
 
+    const venue = await venueCol().findOne({
+      code: str(body.venue_code).toLowerCase(),
+      active: true,
+    });
+    if (!venue) {
+      return res.status(400).json({ error: "Select a valid venue before submitting." });
+    }
+
     const functionType = str(body.function_type);
     if (functionType && !FUNCTION_TYPES.includes(functionType)) {
       return res.status(400).json({ error: "Invalid type of function." });
@@ -116,6 +188,8 @@ publicRouter.post("/prospectus", requireStaff, async (req: AuthedRequest, res, n
       fp_no: formatFpNo(serialNo),
       reservation_no: optional(body.reservation_no),
       submitted_by: staff.displayName,
+      venue_code: venue.code,
+      venue_name: venue.name,
       event_date: required.date,
       time_slot: required.time,
       function_type: functionType || null,

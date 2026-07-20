@@ -1,6 +1,6 @@
 import { MongoClient, Db, Collection } from "mongodb";
 import bcrypt from "bcryptjs";
-import type { Prospectus, StaffDoc, AdminDoc, CounterDoc, MailSettingsDoc } from "./types";
+import type { Prospectus, StaffDoc, AdminDoc, CounterDoc, MailSettingsDoc, VenueDoc } from "./types";
 
 // Railway exposes MONGO_URL for its MongoDB service; MONGODB_URI is the common
 // alias. Fall back to a local mongod for development.
@@ -24,6 +24,7 @@ export const adminCol = () => getDb().collection<AdminDoc>("admins");
 export const prospectusCol = () => getDb().collection<Prospectus>("prospectus");
 export const counterCol = () => getDb().collection<CounterDoc>("counters");
 export const settingsCol = () => getDb().collection<MailSettingsDoc>("settings");
+export const venueCol = () => getDb().collection<VenueDoc>("venues");
 
 const DEFAULT_STAFF = "irfan:irfan@2026,vinod:vinod@2026,tushar:tushar@2026";
 
@@ -57,6 +58,29 @@ async function seedStaff() {
   }
 }
 
+// This app is standalone for Pablo — a single fixed venue, not the
+// multi-property switcher used elsewhere. VENUES exists only in case a
+// second Pablo outlet is ever added.
+const DEFAULT_VENUES = "pablo:Pablo - The Art Cafe";
+
+/** Seeds outlets from VENUES ("code:Name,code:Name"). */
+async function seedVenues() {
+  const raw = process.env.VENUES || DEFAULT_VENUES;
+  for (const entry of raw.split(",").map((e) => e.trim()).filter(Boolean)) {
+    const idx = entry.indexOf(":");
+    if (idx < 1) continue;
+    const code = entry.slice(0, idx).trim().toLowerCase();
+    const name = entry.slice(idx + 1).trim();
+    if (!name) continue;
+
+    await venueCol().updateOne(
+      { code },
+      { $set: { name, active: true }, $setOnInsert: { code, createdAt: new Date() } },
+      { upsert: true }
+    );
+  }
+}
+
 async function seedAdmin() {
   const username = (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
@@ -81,13 +105,16 @@ export async function connect() {
   await Promise.all([
     staffCol().createIndex({ username: 1 }, { unique: true }),
     adminCol().createIndex({ username: 1 }, { unique: true }),
+    venueCol().createIndex({ code: 1 }, { unique: true }),
     prospectusCol().createIndex({ serialNo: 1 }, { unique: true }),
     prospectusCol().createIndex({ createdAt: -1 }),
+    prospectusCol().createIndex({ venue_code: 1, createdAt: -1 }),
     prospectusCol().createIndex({ party_name: "text", fp_no: "text", mobile: "text" }),
   ]);
 
   await seedStaff();
   await seedAdmin();
+  await seedVenues();
 
   console.log(`[db] connected to ${dbName}, indexes ready, users seeded`);
 }

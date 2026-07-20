@@ -21,6 +21,15 @@ export interface CounterDoc {
   value: number;
 }
 
+/** An outlet bookings are raised against, e.g. Pablo - The Art Cafe. */
+export interface VenueDoc {
+  _id?: ObjectId;
+  code: string;
+  name: string;
+  active: boolean;
+  createdAt: Date;
+}
+
 /** Editable mail configuration, so recipients can change without a redeploy. */
 export interface MailSettingsDoc {
   _id: string;
@@ -41,6 +50,8 @@ export interface Prospectus {
   fp_no: string;
   reservation_no: string | null;
   submitted_by: string;
+  venue_code: string;
+  venue_name: string;
   event_date: string;
   time_slot: string;
   function_type: string | null;
