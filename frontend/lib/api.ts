@@ -1,4 +1,8 @@
-export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
+// API call paths already begin with `/api`. Accept a mistakenly configured
+// trailing `/api` in VITE_API_URL without producing `/api/api/...` requests.
+export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001")
+  .replace(/\/+$/, "")
+  .replace(/\/api$/i, "");
 
 export class ApiError extends Error {}
 
