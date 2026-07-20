@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+out/
+
+# Never commit real credentials — SMTP password, JWT secret, admin password.
+.env
+.env.local
+.env*.local
+
+.mongodb-data/
+*.log
+.DS_Store
+next-env.d.ts

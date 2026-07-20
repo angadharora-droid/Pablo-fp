@@ -1,0 +1,210 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 12px;
+  background: #f2f2f2;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000;
+}
+
+/* ---------------------------------------------------------------------------
+   Function prospectus sheet. Ported from the original page so the on-screen
+   form keeps its A4 paper-form look; width is capped rather than fixed so it
+   stays usable on a phone.
+--------------------------------------------------------------------------- */
+
+.form-wrap {
+  width: 100%;
+  max-width: 800px;
+  margin: auto;
+  border: 2px solid #000;
+  padding: 10px;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #fff;
+}
+
+.form-wrap h2 {
+  text-align: center;
+  margin: 5px 0;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.form-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.form-wrap td,
+.form-wrap th {
+  border: 1px solid #000;
+  padding: 6px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.form-wrap .no-border td {
+  border: none;
+  padding: 3px;
+}
+
+.form-wrap input,
+.form-wrap textarea,
+.form-wrap select {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  background: transparent;
+  font-family: inherit;
+  color: #000;
+}
+
+.form-wrap select {
+  appearance: none;
+}
+
+.form-wrap textarea {
+  resize: none;
+  height: 80px;
+}
+
+.form-wrap .menu-area textarea {
+  height: 400px;
+}
+
+.form-wrap .center {
+  text-align: center;
+}
+
+.boxed {
+  border: 1px solid #000;
+  padding: 4px;
+  background: #fff;
+}
+
+.oc-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.oc-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: normal;
+}
+
+.oc-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.timestamp-row {
+  border-top: 2px solid #000;
+  margin-top: 10px;
+  padding-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  font-size: 13px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.timestamp-box {
+  border: 1px solid #000;
+  padding: 6px 10px;
+  min-width: 260px;
+  text-align: right;
+}
+
+.req {
+  color: #b00020;
+  font-weight: bold;
+}
+
+.submit-wrap {
+  display: block;
+  text-align: center;
+  margin: 30px 0 20px;
+}
+
+.submit-btn {
+  display: inline-block;
+  padding: 12px 32px;
+  font-size: 14px;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: inherit;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #000;
+  color: #fff;
+}
+
+.submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.notice {
+  max-width: 800px;
+  margin: 0 auto 14px;
+  padding: 10px 14px;
+  border: 1px solid;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.notice-error {
+  border-color: #b00020;
+  background: #fdecef;
+  color: #7a0016;
+}
+
+.notice-success {
+  border-color: #1b7f3b;
+  background: #eaf7ee;
+  color: #125a29;
+}
+
+.notice-warn {
+  border-color: #9a6700;
+  background: #fff8e5;
+  color: #7a5200;
+}
+
+.form-footer-link {
+  max-width: 800px;
+  margin: 16px auto 0;
+  text-align: center;
+  font-size: 12px;
+}
+
+.form-footer-link a {
+  color: #444;
+}
+
+@media print {
+  body {
+    background: #fff;
+    padding: 0;
+  }
+  .submit-wrap,
+  .notice,
+  .form-footer-link {
+    display: none !important;
+  }
+}
