@@ -122,6 +122,20 @@ publicRouter.get("/bookings", requireStaff, async (req, res, next) => {
   }
 });
 
+/** Full booking payload used to populate the prospectus edit form. */
+publicRouter.get("/bookings/:id", requireStaff, async (req, res, next) => {
+  try {
+    const id = ObjectId.isValid(req.params.id) ? new ObjectId(req.params.id) : null;
+    if (!id) return res.status(400).json({ error: "Invalid id." });
+
+    const doc = await prospectusCol().findOne({ _id: id });
+    if (!doc) return res.status(404).json({ error: "Booking not found." });
+    res.json(doc);
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** Re-download from the Bookings tab. Scoped to the record's own venue. */
 publicRouter.get("/bookings/:id/pdf", requireStaff, async (req, res, next) => {
   try {
@@ -244,6 +258,105 @@ publicRouter.post("/prospectus", requireStaff, async (req: AuthedRequest, res, n
       pdfBase64: pdf.toString("base64"),
       mailed: mail.ok,
       mailError: mail.error ?? null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Update an existing booking without allocating a new FP serial number. */
+publicRouter.put("/prospectus/:id", requireStaff, async (req: AuthedRequest, res, next) => {
+  try {
+    const id = ObjectId.isValid(req.params.id) ? new ObjectId(req.params.id) : null;
+    if (!id) return res.status(400).json({ error: "Invalid id." });
+
+    const existing = await prospectusCol().findOne({ _id: id });
+    if (!existing) return res.status(404).json({ error: "Booking not found." });
+
+    const body = req.body ?? {};
+    const required: Record<string, string> = {
+      date: str(body.date),
+      time: str(body.time),
+      venue: str(body.venue),
+      menu: str(body.menu),
+      party_name: str(body.party_name),
+      mobile: str(body.mobile),
+      rate: str(body.rate),
+    };
+    const missing = Object.entries(required)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+    if (missing.length) {
+      return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
+    }
+    if (!TIME_SLOTS.includes(required.time)) {
+      return res.status(400).json({ error: "Invalid time slot." });
+    }
+
+    const venue = await venueCol().findOne({ code: existing.venue_code, active: true });
+    if (!venue) return res.status(400).json({ error: "This booking's venue is no longer active." });
+
+    const functionType = str(body.function_type);
+    if (functionType && !FUNCTION_TYPES.includes(functionType)) {
+      return res.status(400).json({ error: "Invalid type of function." });
+    }
+
+    const updates: Partial<Prospectus> = {
+      reservation_no: optional(body.reservation_no),
+      event_date: required.date,
+      time_slot: required.time,
+      function_type: functionType || null,
+      venue: required.venue,
+      mg: optional(body.mg),
+      expected_pax: optional(body.expected_pax),
+      menu: required.menu,
+      party_name: required.party_name,
+      company_name: optional(body.company_name),
+      gst_no: optional(body.gst_no),
+      pan_no: optional(body.pan_no),
+      address: optional(body.address),
+      contact_person: optional(body.contact_person),
+      mobile: required.mobile,
+      email: optional(body.email),
+      seating: optional(body.seating),
+      add_rooms: optional(body.add_rooms),
+      rate: required.rate,
+      hall_rent: optional(body.hall_rent),
+      payment: pickMany(body.payment, PAYMENT_MODES),
+      advance: optional(body.advance),
+      transaction_details: optional(body.transaction_details),
+      board_text: optional(body.board_text),
+      other_charges: pickMany(body.other_charges, OTHER_CHARGES),
+      other_charges_notes: optional(body.other_charges_notes),
+      billing: optional(body.billing),
+      housekeeping: optional(body.housekeeping),
+      fnb: optional(body.fnb),
+      kitchen: optional(body.kitchen),
+      generated_at: optional(body.generated_at) || new Date().toISOString().slice(0, 19).replace("T", " "),
+      mailStatus: "pending",
+      mailError: null,
+      updatedAt: new Date(),
+    };
+
+    await prospectusCol().updateOne({ _id: id }, { $set: updates });
+    const record = { ...existing, ...updates } as Prospectus;
+    const pdf = await renderProspectusPdf(record);
+    const filename = pdfFilename(record);
+    const mail = await sendProspectusMail(record, pdf, filename);
+
+    await prospectusCol().updateOne(
+      { _id: id },
+      { $set: { mailStatus: mail.ok ? "sent" : "failed", mailError: mail.error ?? null } }
+    );
+
+    res.json({
+      id: id.toString(),
+      fp_no: record.fp_no,
+      filename,
+      pdfBase64: pdf.toString("base64"),
+      mailed: mail.ok,
+      mailError: mail.error ?? null,
+      updated: true,
     });
   } catch (err) {
     next(err);

@@ -21,7 +21,7 @@ interface SessionContextValue {
   session: Session | null;
   /** Standalone app, one fixed venue — no switcher, just the outlet's name. */
   venue: Venue | null;
-  signIn: (session: Session) => void;
+  signIn: (session: Session, remember?: boolean) => void;
   signOut: () => void;
 }
 
@@ -40,14 +40,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   // Revalidate a stored token on load; a stale one sends the user to sign-in.
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
     if (!token) {
       setReady(true);
       return;
     }
     apiGet("/api/staff/me", token)
       .then((me) => setSession({ token, username: me.username, displayName: me.displayName }))
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
+      .catch(() => {
+        localStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(TOKEN_KEY);
+      })
       .finally(() => setReady(true));
   }, []);
 
@@ -61,13 +64,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setVenue(null));
   }, [session]);
 
-  const signIn = useCallback((next: Session) => {
-    localStorage.setItem(TOKEN_KEY, next.token);
+  const signIn = useCallback((next: Session, remember = false) => {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, next.token);
     setSession(next);
   }, []);
 
   const signOut = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
     setSession(null);
     setVenue(null);
   }, []);

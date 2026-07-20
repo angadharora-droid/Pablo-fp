@@ -113,17 +113,22 @@ export default function BookingsPage() {
                   <span className={`pill pill-${row.mailStatus}`}>{row.mailStatus}</span>
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() =>
-                      downloadPdf(`/api/bookings/${row._id}/pdf`, session.token, `${row.fp_no}.pdf`).catch(() =>
-                        setError("Could not download that PDF.")
-                      )
-                    }
-                  >
-                    PDF
-                  </button>
+                  <div className="row-actions">
+                    <a className="btn btn-sm" href={`/?edit=${row._id}`}>
+                      Edit
+                    </a>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() =>
+                        downloadPdf(`/api/bookings/${row._id}/pdf`, session.token, `${row.fp_no}.pdf`).catch(() =>
+                          setError("Could not download that PDF.")
+                        )
+                      }
+                    >
+                      PDF
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

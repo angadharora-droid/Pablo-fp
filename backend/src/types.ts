@@ -85,4 +85,5 @@ export interface Prospectus {
   mailStatus: "pending" | "sent" | "failed";
   mailError: string | null;
   createdAt: Date;
+  updatedAt?: Date;
 }

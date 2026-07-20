@@ -9,7 +9,7 @@ const app = express();
 
 app.use(express.json({ limit: "1mb" }));
 
-const allowed = (process.env.CORS_ORIGIN || "http://localhost:3000")
+const allowed = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
@@ -36,11 +36,15 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: "Something went wrong. Please try again." });
 });
 
-const port = Number(process.env.PORT || 4000);
+const port = Number(process.env.PORT || 3001);
 
 connect()
   .then(() => {
-    app.listen(port, () => console.log(`[server] listening on :${port}`));
+    console.log("✓ MongoDB connected");
+    app.listen(port, () => {
+      console.log(`✓ Server running → port ${port} (http://localhost:${port})`);
+      console.log(`  Allowing frontend origins: ${allowed.join(", ")}`);
+    });
   })
   .catch((err) => {
     console.error("[startup] failed to connect to MongoDB:", err);

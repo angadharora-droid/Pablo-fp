@@ -3,7 +3,7 @@
 Function Prospectus system for Pablo The Art Cafe — a rebuild of the WordPress
 `/function-prospectus/` page as a standalone app.
 
-- **Frontend** — Next.js 15 (App Router), deployed on **Vercel**
+- **Frontend** — React + Vite, deployed on **Vercel**
 - **Backend** — Express + TypeScript, deployed on **Railway**
 - **Database** — MongoDB (local `mongod` for development, Railway MongoDB in production)
 
@@ -31,8 +31,9 @@ backend/          Express API, MongoDB access, PDF generation, mailer
   src/pdf.ts      Single-page A4 PDF renderer
   src/mailer.ts   SMTP transport + admin-editable mail settings
   src/routes/     public.ts (form) and admin.ts (panel)
-frontend/         Next.js app
-  app/page.tsx    The prospectus form
+frontend/         React + Vite app
+  main.tsx        Browser entry point and route selection
+  app/(app)/page.tsx    The prospectus form
   app/admin/      Admin panel
 ```
 
@@ -50,7 +51,7 @@ Backend:
 cd backend
 cp .env.example .env      # then fill in SMTP_PASS, JWT_SECRET, ADMIN_PASSWORD
 npm install
-npm run dev               # http://localhost:4000
+npm run dev               # http://localhost:3001
 ```
 
 Frontend:
@@ -59,7 +60,7 @@ Frontend:
 cd frontend
 cp .env.example .env.local
 npm install
-npm run dev               # http://localhost:3000
+npm run dev               # http://localhost:5173
 ```
 
 ## Deploying the backend to Railway
@@ -83,7 +84,7 @@ npm run dev               # http://localhost:3000
 ## Deploying the frontend to Vercel
 
 1. Import the repo on Vercel with root directory `frontend`.
-2. Set `NEXT_PUBLIC_API_URL` to the Railway backend URL (no trailing slash).
+2. Set `VITE_API_URL` to the Railway backend URL (no trailing slash).
 3. Deploy, then add that Vercel URL to `CORS_ORIGIN` on Railway.
 
 ## Security notes

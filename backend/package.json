@@ -4,9 +4,10 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "predev": "bash ../free-ports.sh 3001",
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -26,6 +27,8 @@
     "@types/node": "^20.14.10",
     "@types/nodemailer": "^8.0.1",
     "@types/pdfkit": "^0.13.4",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.3"
   }

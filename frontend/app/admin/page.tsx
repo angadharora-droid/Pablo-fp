@@ -47,17 +47,20 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("submissions");
 
   useEffect(() => {
-    setToken(localStorage.getItem(TOKEN_KEY));
+    setToken(localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY));
     setReady(true);
   }, []);
 
   const signOut = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
     setToken(null);
   }, []);
 
-  function onSignedIn(next: string) {
-    localStorage.setItem(TOKEN_KEY, next);
+  function onSignedIn(next: string, remember: boolean) {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, next);
     setToken(next);
   }
 
@@ -110,9 +113,11 @@ export default function AdminPage() {
 
 /* -------------------------------- Sign in -------------------------------- */
 
-function LoginCard({ onSignedIn }: { onSignedIn: (token: string) => void }) {
+function LoginCard({ onSignedIn }: { onSignedIn: (token: string, remember: boolean) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -122,7 +127,7 @@ function LoginCard({ onSignedIn }: { onSignedIn: (token: string) => void }) {
     setBusy(true);
     try {
       const res = await apiSend("/api/admin/login", "POST", { username, password });
-      onSignedIn(res.token);
+      onSignedIn(res.token, remember);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reach the server.");
     } finally {
@@ -144,8 +149,25 @@ function LoginCard({ onSignedIn }: { onSignedIn: (token: string) => void }) {
         </label>
         <label className="field">
           <span>Password</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
         </label>
+
+        <div className="auth-options">
+          <label className="auth-option">
+            <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+            <span>Show password</span>
+          </label>
+          <label className="auth-option">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            <span>Remember me</span>
+          </label>
+        </div>
 
         <button className="btn" type="submit" disabled={busy} style={{ width: "100%" }}>
           {busy ? "Signing in…" : "Sign in"}

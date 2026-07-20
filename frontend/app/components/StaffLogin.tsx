@@ -12,6 +12,8 @@ export function StaffLogin() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -27,7 +29,7 @@ export function StaffLogin() {
     setBusy(true);
     try {
       const res = await apiSend("/api/staff/login", "POST", { username, password });
-      signIn({ token: res.token, username: res.username, displayName: res.displayName });
+      signIn({ token: res.token, username: res.username, displayName: res.displayName }, remember);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reach the server.");
     } finally {
@@ -62,7 +64,7 @@ export function StaffLogin() {
       <label>
         <span>Password</span>
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -70,13 +72,21 @@ export function StaffLogin() {
         />
       </label>
 
+      <div className="auth-options">
+        <label className="auth-option">
+          <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+          <span>Show password</span>
+        </label>
+        <label className="auth-option">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          <span>Remember me</span>
+        </label>
+      </div>
+
       <button type="submit" className="submit-btn" style={{ width: "100%" }} disabled={busy}>
         {busy ? "SIGNING IN…" : "SIGN IN"}
       </button>
 
-      <p className="form-footer-link" style={{ marginTop: 18 }}>
-        <a href="/admin">Admin panel</a>
-      </p>
     </form>
   );
 }

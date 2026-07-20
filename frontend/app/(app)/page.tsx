@@ -46,6 +46,17 @@ const EMPTY = {
 
 type Fields = typeof EMPTY;
 
+function fieldsFromBooking(doc: Record<string, unknown>): Fields {
+  const fields = { ...EMPTY };
+  for (const key of Object.keys(fields) as (keyof Fields)[]) {
+    const value = doc[key];
+    fields[key] = typeof value === "string" ? value : "";
+  }
+  fields.date = typeof doc.event_date === "string" ? doc.event_date : "";
+  fields.time = typeof doc.time_slot === "string" ? doc.time_slot : "";
+  return fields;
+}
+
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -60,27 +71,53 @@ function stamp(d: Date) {
 /** New Booking — the function prospectus form. */
 export default function NewBookingPage() {
   const { session, venue, signOut } = useSession();
+  const editingId = new URLSearchParams(window.location.search).get("edit");
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [payment, setPayment] = useState<string[]>([]);
   const [otherCharges, setOtherCharges] = useState<string[]>([]);
   const [fpDisplay, setFpDisplay] = useState("PABLO FP / AUTO");
   const [timestamp, setTimestamp] = useState(() => stamp(new Date()));
   const [submitting, setSubmitting] = useState(false);
+  const [loadingBooking, setLoadingBooking] = useState(Boolean(editingId));
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ fp: string; mailed: boolean; mailError: string | null } | null>(null);
+  const [success, setSuccess] = useState<{
+    fp: string;
+    mailed: boolean;
+    mailError: string | null;
+    edited: boolean;
+  } | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
   const refreshFp = useCallback(() => {
+    if (editingId) return;
     apiGet("/api/next-fp")
       .then((d) => setFpDisplay(d.display))
       .catch(() => setFpDisplay("PABLO FP / AUTO"));
-  }, []);
+  }, [editingId]);
 
   useEffect(() => {
     refreshFp();
   }, [refreshFp]);
+
+  useEffect(() => {
+    if (!editingId || !session) return;
+    setLoadingBooking(true);
+    apiGet(`/api/bookings/${editingId}`, session.token)
+      .then((doc) => {
+        setFields(fieldsFromBooking(doc));
+        setPayment(Array.isArray(doc.payment) ? doc.payment : []);
+        setOtherCharges(Array.isArray(doc.other_charges) ? doc.other_charges : []);
+        setFpDisplay(typeof doc.fp_no === "string" ? doc.fp_no : "PABLO FP");
+      })
+      .catch((err) => {
+        const message = err instanceof ApiError ? err.message : "Could not load this booking.";
+        setError(message);
+        if (/sign in|expired/i.test(message)) signOut();
+      })
+      .finally(() => setLoadingBooking(false));
+  }, [editingId, session, signOut]);
 
   // Live clock, mirroring the original page's ticking timestamp.
   useEffect(() => {
@@ -104,8 +141,8 @@ export default function NewBookingPage() {
 
     try {
       const result = await apiSend(
-        "/api/prospectus",
-        "POST",
+        editingId ? `/api/prospectus/${editingId}` : "/api/prospectus",
+        editingId ? "PUT" : "POST",
         {
           ...fields,
           payment,
@@ -117,12 +154,14 @@ export default function NewBookingPage() {
       );
 
       saveBase64Pdf(result.pdfBase64, result.filename);
-      setSuccess({ fp: result.fp_no, mailed: result.mailed, mailError: result.mailError });
+      setSuccess({ fp: result.fp_no, mailed: result.mailed, mailError: result.mailError, edited: Boolean(editingId) });
 
-      setFields(EMPTY);
-      setPayment([]);
-      setOtherCharges([]);
-      refreshFp();
+      if (!editingId) {
+        setFields(EMPTY);
+        setPayment([]);
+        setOtherCharges([]);
+        refreshFp();
+      }
       topRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Could not reach the server. Please try again.";
@@ -136,6 +175,7 @@ export default function NewBookingPage() {
   }
 
   if (!session) return null;
+  if (loadingBooking) return <div className="notice">Loading booking…</div>;
 
   return (
     <>
@@ -145,10 +185,17 @@ export default function NewBookingPage() {
 
       {success && (
         <div className={`notice ${success.mailed ? "notice-success" : "notice-warn"}`}>
-          <strong>{success.fp} saved.</strong> The PDF has downloaded.{" "}
+          <strong>{success.fp} {success.edited ? "updated" : "saved"}.</strong> The PDF has downloaded.{" "}
           {success.mailed
             ? "It has also been emailed to the distribution list."
             : `The email could not be sent (${success.mailError ?? "unknown error"}). The record is saved — resend it from the admin panel.`}
+        </div>
+      )}
+
+      {editingId && (
+        <div className="notice notice-warn">
+          Editing <strong>{fpDisplay}</strong>. Saving will update this booking without changing its FP number.{" "}
+          <a href="/bookings">Cancel editing</a>
         </div>
       )}
 
@@ -197,7 +244,7 @@ export default function NewBookingPage() {
               </tr>
               <tr>
                 <td>
-                  <input type="date" required min={today} value={fields.date} onChange={set("date")} />
+                  <input type="date" required min={editingId ? undefined : today} value={fields.date} onChange={set("date")} />
                 </td>
                 <td>
                   <select required value={fields.time} onChange={set("time")}>
@@ -453,7 +500,13 @@ export default function NewBookingPage() {
 
           <div className="submit-wrap">
             <button type="submit" className="submit-btn" disabled={submitting}>
-              {submitting ? "SUBMITTING…" : "SUBMIT & DOWNLOAD PDF (A4)"}
+              {submitting
+                ? editingId
+                  ? "UPDATING…"
+                  : "SUBMITTING…"
+                : editingId
+                  ? "UPDATE & DOWNLOAD PDF (A4)"
+                  : "SUBMIT & DOWNLOAD PDF (A4)"}
             </button>
           </div>
         </div>

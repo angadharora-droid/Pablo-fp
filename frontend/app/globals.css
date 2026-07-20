@@ -458,6 +458,41 @@ table.data th {
   color: #000;
 }
 
+.auth-options {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -2px 0 16px;
+  flex-wrap: wrap;
+}
+
+.staff-login .auth-option,
+.auth-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.staff-login .auth-option input,
+.auth-option input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  padding: 0;
+  accent-color: #000;
+}
+
+.staff-login .auth-option > span,
+.auth-option > span {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+}
+
 .signed-in-as {
   max-width: 800px;
   margin: 0 auto 12px;
