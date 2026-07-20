@@ -41,7 +41,7 @@ const port = Number(process.env.PORT || 3001);
 connect()
   .then(() => {
     console.log("✓ MongoDB connected");
-    app.listen(port, () => {
+    app.listen(port, "0.0.0.0", () => {
       console.log(`✓ Server running → port ${port} (http://localhost:${port})`);
       console.log(`  Allowing frontend origins: ${allowed.join(", ")}`);
     });
